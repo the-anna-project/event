@@ -3,14 +3,14 @@ package event
 import (
 	"sync"
 
-	storagecollection "github.com/the-anna-project/storage/collection"
+	"github.com/the-anna-project/storage"
 )
 
 // CollectionConfig represents the configuration used to create a new event
 // collection.
 type CollectionConfig struct {
 	// Dependencies.
-	StorageCollection *storagecollection.Collection
+	StorageCollection *storage.Collection
 }
 
 // DefaultCollectionConfig provides a default configuration to create a new
@@ -18,10 +18,10 @@ type CollectionConfig struct {
 func DefaultCollectionConfig() CollectionConfig {
 	var err error
 
-	var storageCollection *storagecollection.Collection
+	var storageCollection *storage.Collection
 	{
-		storageConfig := storagecollection.DefaultConfig()
-		storageCollection, err = storagecollection.New(storageConfig)
+		storageConfig := storage.DefaultCollectionConfig()
+		storageCollection, err = storage.NewCollection(storageConfig)
 		if err != nil {
 			panic(err)
 		}
