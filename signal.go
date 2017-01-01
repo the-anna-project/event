@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/the-anna-project/context"
+	"github.com/the-anna-project/id"
 )
 
 // SignalConfig represents the configuration used to create a new signal event.
@@ -14,19 +15,36 @@ type SignalConfig struct {
 	Arguments []reflect.Value
 	Context   context.Context
 	Created   time.Time
+	ID        string
 	Payload   string
 }
 
 // DefaultSignalConfig provides a default configuration to create a new signal
 // event by best effort.
 func DefaultSignalConfig() SignalConfig {
-	return SignalConfig{
+	var newID string
+	{
+		idConfig := id.DefaultServiceConfig()
+		idService, err := id.NewService(idConfig)
+		if err != nil {
+			panic(err)
+		}
+		newID, err = idService.New()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	config := SignalConfig{
 		// Settings.
 		Arguments: nil,
 		Context:   nil,
 		Created:   time.Now(),
+		ID:        newID,
 		Payload:   "",
 	}
+
+	return config
 }
 
 // NewSignal creates a new configured signal event.
@@ -38,12 +56,16 @@ func NewSignal(config SignalConfig) (Signal, error) {
 	if config.Created.IsZero() {
 		return nil, maskAnyf(invalidConfigError, "created must not be empty")
 	}
+	if config.ID == "" {
+		return nil, maskAnyf(invalidConfigError, "id must not be empty")
+	}
 
 	newEvent := &signal{
 		// Settings.
 		arguments: config.Arguments,
 		context:   config.Context,
 		created:   config.Created,
+		id:        config.ID,
 		payload:   config.Payload,
 	}
 
@@ -55,6 +77,7 @@ type signal struct {
 	arguments []reflect.Value
 	context   context.Context
 	created   time.Time
+	id        string
 	payload   string
 }
 
@@ -68,6 +91,10 @@ func (s *signal) Context() context.Context {
 
 func (s *signal) Created() time.Time {
 	return s.created
+}
+
+func (s *signal) ID() string {
+	return s.id
 }
 
 func (s *signal) MarshalJSON() ([]byte, error) {

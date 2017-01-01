@@ -5,23 +5,42 @@ package event
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/the-anna-project/id"
 )
 
 // Config represents the configuration used to create a new event.
 type Config struct {
 	// Settings.
 	Created time.Time
+	ID      string
 	Payload string
 }
 
 // DefaultConfig provides a default configuration to create a new event by best
 // effort.
 func DefaultConfig() Config {
-	return Config{
+	var newID string
+	{
+		idConfig := id.DefaultServiceConfig()
+		idService, err := id.NewService(idConfig)
+		if err != nil {
+			panic(err)
+		}
+		newID, err = idService.New()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	config := Config{
 		// Settings.
 		Created: time.Now(),
+		ID:      newID,
 		Payload: "",
 	}
+
+	return config
 }
 
 // New creates a new configured event.
@@ -30,10 +49,14 @@ func New(config Config) (Event, error) {
 	if config.Created.IsZero() {
 		return nil, maskAnyf(invalidConfigError, "created must not be empty")
 	}
+	if config.ID == "" {
+		return nil, maskAnyf(invalidConfigError, "id must not be empty")
+	}
 
 	newEvent := &event{
 		// Settings.
 		created: config.Created,
+		id:      config.ID,
 		payload: config.Payload,
 	}
 
@@ -43,11 +66,16 @@ func New(config Config) (Event, error) {
 type event struct {
 	// Settings.
 	created time.Time
+	id      string
 	payload string
 }
 
 func (e *event) Created() time.Time {
 	return e.created
+}
+
+func (e *event) ID() string {
+	return e.id
 }
 
 func (e *event) MarshalJSON() ([]byte, error) {
