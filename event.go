@@ -37,7 +37,7 @@ func DefaultConfig() Config {
 		// Settings.
 		Created: time.Now(),
 		ID:      newID,
-		Payload: "",
+		Payload: "{}",
 	}
 
 	return config
@@ -60,14 +60,20 @@ func New(config Config) (Event, error) {
 		payload: config.Payload,
 	}
 
+	b, err := json.Marshal(newEvent)
+	if err != nil {
+		return nil, maskAny(err)
+	}
+	newEvent.payload = string(b)
+
 	return newEvent, nil
 }
 
 type event struct {
 	// Settings.
-	created time.Time
-	id      string
-	payload string
+	created time.Time `json:"created"`
+	id      string    `json:"id"`
+	payload string    `json:"payload"`
 }
 
 func (e *event) Created() time.Time {
@@ -105,6 +111,8 @@ func (e *event) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return maskAny(err)
 	}
+
+	e.payload = string(b)
 
 	return nil
 }

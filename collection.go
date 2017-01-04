@@ -44,12 +44,23 @@ func NewCollection(config CollectionConfig) (*Collection, error) {
 
 	var err error
 
-	var signalService Service
+	var activatorService Service
 	{
-		signalConfig := DefaultServiceConfig()
-		signalConfig.Kind = KindSignal
-		signalConfig.StorageCollection = config.StorageCollection
-		signalService, err = NewService(signalConfig)
+		activatorConfig := DefaultServiceConfig()
+		activatorConfig.Kind = KindActivator
+		activatorConfig.StorageCollection = config.StorageCollection
+		activatorService, err = NewService(activatorConfig)
+		if err != nil {
+			return nil, maskAny(err)
+		}
+	}
+
+	var networkService Service
+	{
+		networkConfig := DefaultServiceConfig()
+		networkConfig.Kind = KindNetwork
+		networkConfig.StorageCollection = config.StorageCollection
+		networkService, err = NewService(networkConfig)
 		if err != nil {
 			return nil, maskAny(err)
 		}
@@ -60,7 +71,8 @@ func NewCollection(config CollectionConfig) (*Collection, error) {
 		bootOnce:     sync.Once{},
 		shutdownOnce: sync.Once{},
 
-		Signal: signalService,
+		Activator: activatorService,
+		Network:   networkService,
 	}
 
 	return newCollection, nil
@@ -72,7 +84,8 @@ type Collection struct {
 	bootOnce     sync.Once
 	shutdownOnce sync.Once
 
-	Signal Service
+	Activator Service
+	Network   Service
 }
 
 func (c *Collection) Boot() {
@@ -81,7 +94,13 @@ func (c *Collection) Boot() {
 
 		wg.Add(1)
 		go func() {
-			c.Signal.Boot()
+			c.Activator.Boot()
+			wg.Done()
+		}()
+
+		wg.Add(1)
+		go func() {
+			c.Network.Boot()
 			wg.Done()
 		}()
 
@@ -95,7 +114,13 @@ func (c *Collection) Shutdown() {
 
 		wg.Add(1)
 		go func() {
-			c.Signal.Shutdown()
+			c.Activator.Shutdown()
+			wg.Done()
+		}()
+
+		wg.Add(1)
+		go func() {
+			c.Network.Shutdown()
 			wg.Done()
 		}()
 
