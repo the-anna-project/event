@@ -50,6 +50,11 @@ type Service interface {
 	// returned. Consuming any event regardless their labeling can be done by
 	// providing the wildcard label LabelWildcard.
 	Search(labels ...string) (Event, error)
+	// SearchAll returns all events associated with the given labels. While
+	// Service.Search blocks until one event is available and can be returned,
+	// Service.SearchAll returns all events at once and in case there is no single
+	// event available, a not found error is returned.
+	SearchAll(labels ...string) ([]Event, error)
 	// Shutdown ends all processes of the service like shutting down a machine.
 	// The call to Shutdown blocks until the service is completely shut down, so
 	// you might want to call it in a separate goroutine.

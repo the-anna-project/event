@@ -289,6 +289,53 @@ func (s *service) Search(labels ...string) (Event, error) {
 	return event, nil
 }
 
+func (s *service) SearchAll(labels ...string) ([]Event, error) {
+	namespace := s.namespaceFromLabels(labels...)
+	if namespace == LabelWildcard {
+		return nil, maskAnyf(invalidExecutionError, "wildcard namespace must only be used for Service.Search")
+	}
+
+	// In case there is not any event queued or the list does not exist at all
+	// (which is implicitely the same), we return a not found error. The
+	// underlying storage implementation would return an empty list, but we do not
+	// want this for the event service interface. That way we have a clear
+	// distinction between a successful and a failed operation.
+	ok, err := s.ExistsAny(labels...)
+	if err != nil {
+		return nil, maskAny(err)
+	}
+	if !ok {
+		return nil, maskAny(notFoundError)
+	}
+
+	eventIDs, err := s.storage.Event.GetAllFromList(s.namespaceKey(namespace))
+	if err != nil {
+		return nil, maskAny(err)
+	}
+
+	var events []Event
+
+	for _, eventID := range eventIDs {
+		rawEvent, err := s.storage.Event.Get(s.eventKey(eventID))
+		if err != nil {
+			return nil, maskAny(err)
+		}
+
+		newEvent, err := New(DefaultConfig())
+		if err != nil {
+			return nil, maskAny(err)
+		}
+		err = json.Unmarshal([]byte(rawEvent), &newEvent)
+		if err != nil {
+			return nil, maskAny(err)
+		}
+
+		events = append(events, newEvent)
+	}
+
+	return events, nil
+}
+
 func (s *service) Shutdown() {
 	s.shutdownOnce.Do(func() {
 		close(s.closer)

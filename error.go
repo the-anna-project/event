@@ -42,3 +42,10 @@ var invalidExecutionError = errgo.New("invalid execution")
 func IsInvalidExecution(err error) bool {
 	return errgo.Cause(err) == invalidExecutionError
 }
+
+var notFoundError = errgo.New("not found")
+
+// IsNotFound asserts notFoundError.
+func IsNotFound(err error) bool {
+	return errgo.Cause(err) == notFoundError
+}
