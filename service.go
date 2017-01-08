@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cenk/backoff"
+	"github.com/the-anna-project/context"
 	"github.com/the-anna-project/instrumentor"
 	"github.com/the-anna-project/storage"
 )
@@ -143,7 +144,7 @@ func (s *service) Boot() {
 	})
 }
 
-func (s *service) Create(event Event, labels ...string) error {
+func (s *service) Create(ctx context.Context, event Event, labels ...string) error {
 	namespace := s.namespaceFromLabels(labels...)
 	if namespace == LabelWildcard {
 		return maskAnyf(invalidExecutionError, "wildcard namespace must only be used for Service.Search")
@@ -171,7 +172,7 @@ func (s *service) Create(event Event, labels ...string) error {
 	return nil
 }
 
-func (s *service) Delete(event Event, labels ...string) error {
+func (s *service) Delete(ctx context.Context, event Event, labels ...string) error {
 	namespace := s.namespaceFromLabels(labels...)
 	if namespace == LabelWildcard {
 		return maskAnyf(invalidExecutionError, "wildcard namespace must only be used for Service.Search")
@@ -185,7 +186,7 @@ func (s *service) Delete(event Event, labels ...string) error {
 	return nil
 }
 
-func (s *service) ExistsAny(labels ...string) (bool, error) {
+func (s *service) ExistsAny(ctx context.Context, labels ...string) (bool, error) {
 	namespace := s.namespaceFromLabels(labels...)
 	if namespace == LabelWildcard {
 		return false, maskAnyf(invalidExecutionError, "wildcard namespace must only be used for Service.Search")
@@ -206,7 +207,7 @@ func (s *service) ExistsAny(labels ...string) (bool, error) {
 	return false, nil
 }
 
-func (s *service) Limit(max int, labels ...string) error {
+func (s *service) Limit(ctx context.Context, max int, labels ...string) error {
 	if max < 1 {
 		return maskAnyf(invalidExecutionError, "max must be 1 or greater")
 	}
@@ -224,7 +225,7 @@ func (s *service) Limit(max int, labels ...string) error {
 	return nil
 }
 
-func (s *service) Search(labels ...string) (Event, error) {
+func (s *service) Search(ctx context.Context, labels ...string) (Event, error) {
 	namespace := s.namespaceFromLabels(labels...)
 
 	var event Event
@@ -247,7 +248,7 @@ func (s *service) Search(labels ...string) (Event, error) {
 			return maskAny(err)
 		}
 
-		ok, err := s.ExistsAny(labels...)
+		ok, err := s.ExistsAny(ctx, labels...)
 		if err != nil {
 			return maskAny(err)
 		}
@@ -289,7 +290,7 @@ func (s *service) Search(labels ...string) (Event, error) {
 	return event, nil
 }
 
-func (s *service) SearchAll(labels ...string) ([]Event, error) {
+func (s *service) SearchAll(ctx context.Context, labels ...string) ([]Event, error) {
 	namespace := s.namespaceFromLabels(labels...)
 	if namespace == LabelWildcard {
 		return nil, maskAnyf(invalidExecutionError, "wildcard namespace must only be used for Service.Search")
@@ -300,7 +301,7 @@ func (s *service) SearchAll(labels ...string) ([]Event, error) {
 	// underlying storage implementation would return an empty list, but we do not
 	// want this for the event service interface. That way we have a clear
 	// distinction between a successful and a failed operation.
-	ok, err := s.ExistsAny(labels...)
+	ok, err := s.ExistsAny(ctx, labels...)
 	if err != nil {
 		return nil, maskAny(err)
 	}
@@ -342,32 +343,32 @@ func (s *service) Shutdown() {
 	})
 }
 
-func (s *service) WriteAll(events []Event, labels ...string) error {
+func (s *service) WriteAll(ctx context.Context, events []Event, labels ...string) error {
 	namespace := s.namespaceFromLabels(labels...)
 	if namespace == LabelWildcard {
 		return maskAnyf(invalidExecutionError, "wildcard namespace must only be used for Service.Search")
 	}
 
 	for {
-		ok, err := s.ExistsAny(labels...)
+		ok, err := s.ExistsAny(ctx, labels...)
 		if err != nil {
 			return maskAny(err)
 		}
 		if !ok {
 			break
 		}
-		e, err := s.Search(labels...)
+		e, err := s.Search(ctx, labels...)
 		if err != nil {
 			return maskAny(err)
 		}
-		err = s.Delete(e, labels...)
+		err = s.Delete(ctx, e, labels...)
 		if err != nil {
 			return maskAny(err)
 		}
 	}
 
 	for _, e := range events {
-		err := s.Create(e, labels...)
+		err := s.Create(ctx, e, labels...)
 		if err != nil {
 			return maskAny(err)
 		}

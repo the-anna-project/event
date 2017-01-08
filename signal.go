@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/the-anna-project/context"
+	"github.com/the-anna-project/context/merge"
 	"github.com/the-anna-project/id"
 )
 
@@ -60,7 +61,7 @@ func NewSignal(config SignalConfig) (Signal, error) {
 
 	newSignal := &signal{
 		// Internals.
-		payload: "{}",
+		payload: "",
 
 		// Settings.
 		arguments: config.Arguments,
@@ -116,12 +117,17 @@ func NewSignalFromSignals(signals []Signal) (Signal, error) {
 
 	var ctx context.Context
 	{
+		newCtx, err := context.New(context.DefaultConfig())
+		if err != nil {
+			return nil, maskAny(err)
+		}
+
 		var allCtxs []context.Context
 		for _, s := range signals {
 			allCtxs = append(allCtxs, s.Context())
 		}
 
-		ctx, err = context.NewFromContexts(allCtxs)
+		ctx, err = merge.NewContextFromContexts(newCtx, allCtxs)
 		if err != nil {
 			return nil, maskAny(err)
 		}

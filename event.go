@@ -37,7 +37,7 @@ func DefaultConfig() Config {
 		// Settings.
 		Created: time.Now(),
 		ID:      newID,
-		Payload: "{}",
+		Payload: "",
 	}
 
 	return config
